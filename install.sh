@@ -178,17 +178,17 @@ install_node_packages() {
 }
 
 # Function to set up environment configuration
-setup_environment() {
-    log "Setting up environment configuration"
-    cp "$MARKETPLACE/.env.example" "$MARKETPLACE/.env"
-    php "$MARKETPLACE/artisan" key:generate
-}
+#setup_environment() {
+#    log "Setting up environment configuration"
+#    cp "$MARKETPLACE/.env.example" "$MARKETPLACE/.env"
+#    php "$MARKETPLACE/artisan" key:generate
+#}
 
 # Function to migrate the database
-migrate_database() {
-    log "Migrating the database"
-    php "$MARKETPLACE/artisan" migrate
-}
+#migrate_database() {
+#    log "Migrating the database"
+#    php "$MARKETPLACE/artisan" migrate
+#}
 
 # Main script execution
 main() {
@@ -204,8 +204,6 @@ main() {
     set_permissions
     install_composer_dependencies
     install_node_packages
-    setup_environment
-    migrate_database
     log "Setup completed! Please make sure to update the .env file with correct database connection details and restart your server."
 }
 
