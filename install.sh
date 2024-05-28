@@ -15,6 +15,8 @@ SSPASSWORD="marketpassword"
 DB_PASSWORD="newpassword"
 DB_NAME="marketplace"
 MARKETPLACE="/var/www/privatemarket"
+DB_USER="marketuser"
+DB_USER_PASSWORD="marketpassword"
 
 # Log function
 log() {
@@ -63,6 +65,67 @@ install_nginx() {
 
     # Create Nginx configuration for the website
     cat <<END >/etc/nginx/sites-available/default
+}
+
+# Function to install MySQL Server
+install_mysql() {
+    log "Installing MySQL Server"
+    echo "mysql-server mysql-server/root_password password $DB_PASSWORD" | sudo debconf-set-selections
+    echo "mysql-server mysql-server/root_password_again password $DB_PASSWORD" | sudo debconf-set-selections
+    apt-get -y install mysql-server
+    mysql -uroot -p"$DB_PASSWORD" -e "CREATE DATABASE $DB_NAME DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+    mysql -uroot -p"$DB_PASSWORD" -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_USER_PASSWORD';"
+    mysql -uroot -p"$DB_PASSWORD" -e "GRANT ALL PRIVILEGES ON *.* TO '$DB_USER'@'localhost';"
+    mysql -uroot -p"$DB_PASSWORD" -e "FLUSH PRIVILEGES;"
+    service mysql restart
+}
+
+# Function to install Elasticsearch
+install_elasticsearch() {
+    log "Elasticsearch"
+    # Install Elasticsearch
+    wget https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.3.1/elasticsearch-2.3.1.deb
+    sudo dpkg -i elasticsearch-2.3.1.deb
+    sudo service elasticsearch start
+}
+
+# Function to install and configure Redis
+install_redis() {
+    log "Installing and configuring Redis"
+    apt-get install -y redis-server
+    sed -i 's/supervised no/supervised systemd/' /etc/redis/redis.conf
+    systemctl restart redis.service
+}
+
+# Function to install Node.js and NPM
+install_node() {
+    log "Installing Node.js and NPM"
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    nvm install 18
+    nvm use 18
+}
+
+# Function to set permissions for Marketplace files
+set_permissions() {
+    log "Setting permissions for Marketplace files"
+    chown -R www-data:www-data "$MARKETPLACE/public"
+    chmod 755 /var/www
+    chmod -R 755 "$MARKETPLACE/bootstrap/cache"
+    chmod -R 755 "$MARKETPLACE/storage"
+    sudo chown -R $USER:www-data $MARKETPLACE/storage
+    sudo chown -R $USER:www-data $MARKETPLACE/bootstrap/cache
+    sudo -u www-data php "$MARKETPLACE/artisan" storage:link
+    mkdir -p "$MARKETPLACE/storage/public/"
+    mkdir -p "$MARKETPLACE/storage/public/products"
+    sudo chmod -R 755 $MARKETPLACE/storage/public/products
+    sudo chgrp -R www-data $MARKETPLACE/storage/public/products
+    sudo chmod -R ug+rwx $MARKETPLACE/storage/public/products
+    
+}
+
+install_nginx_config(){
 server {
     listen 80;
     listen [::]:80;
@@ -95,54 +158,6 @@ END
     systemctl restart nginx
 }
 
-# Function to install MySQL Server
-install_mysql() {
-    log "Installing MySQL Server"
-    echo "mysql-server mysql-server/root_password password $DB_PASSWORD" | sudo debconf-set-selections
-    echo "mysql-server mysql-server/root_password_again password $DB_PASSWORD" | sudo debconf-set-selections
-    apt-get -y install mysql-server
-    mysql -uroot -p"$DB_PASSWORD" -e "CREATE DATABASE $DB_NAME;"
-    service mysql restart
-}
-
-# Function to install Elasticsearch
-install_elasticsearch() {
-    log "Elasticsearch"
-    # Install Elasticsearch
-    wget https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/deb/elasticsearch/2.3.1/elasticsearch-2.3.1.deb
-    sudo dpkg -i elasticsearch-2.3.1.deb
-    sudo service elasticsearch start
-}
-
-
-# Function to install and configure Redis
-install_redis() {
-    log "Installing and configuring Redis"
-    apt-get install -y redis-server
-    sed -i 's/supervised no/supervised systemd/' /etc/redis/redis.conf
-    systemctl restart redis.service
-}
-
-# Function to install Node.js and NPM
-install_node() {
-    log "Installing Node.js and NPM"
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-    export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    nvm install 18
-    nvm use 18
-}
-
-# Function to set permissions for Marketplace files
-set_permissions() {
-    log "Setting permissions for Marketplace files"
-    chown -R www-data:www-data "$MARKETPLACE/public"
-    chmod 755 /var/www
-    chmod -R 755 "$MARKETPLACE/bootstrap/cache"
-    chmod -R 755 "$MARKETPLACE/storage"
-    sudo -u www-data php "$MARKETPLACE/artisan" storage:link
-    mkdir -p "$MARKETPLACE/storage/public/products"
-}
 
 # Function to install Composer dependencies
 install_composer_dependencies() {
