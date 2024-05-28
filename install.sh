@@ -117,7 +117,7 @@ set_permissions() {
     chmod -R 755 "$MARKETPLACE/storage"
     sudo chown -R $USER:www-data $MARKETPLACE/storage
     sudo chown -R $USER:www-data $MARKETPLACE/bootstrap/cache
-    sudo -u www-data php "$MARKETPLACE/artisan" storage:link
+
     mkdir -p "$MARKETPLACE/storage/public/"
     mkdir -p "$MARKETPLACE/storage/public/products"
     sudo chmod -R 755 $MARKETPLACE/storage/public/products
@@ -229,6 +229,7 @@ migrate_fresh() {
 # Function to link storage
 link_storage() {
     log "Linking storage"
+    sudo -u www-data php "$MARKETPLACE/artisan" storage:link
     php "$MARKETPLACE/artisan" storage:link
 }
 
