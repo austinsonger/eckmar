@@ -159,6 +159,12 @@ END
 }
 
 
+# Function to install Node packages and build assets
+install_node_packages() {
+    log "Installing Node packages and building assets"
+    sudo -u "$SSUSER" -H sh -c "cd $MARKETPLACE && npm install && npm run prod"
+}
+
 # Function to install Composer dependencies
 install_composer_dependencies() {
     log "Installing Composer dependencies"
@@ -171,24 +177,55 @@ install_composer_dependencies() {
     php composer.phar install"
 }
 
-# Function to install Node packages and build assets
-install_node_packages() {
-    log "Installing Node packages and building assets"
-    sudo -u "$SSUSER" -H sh -c "cd $MARKETPLACE && npm install && npm run prod"
-}
 
 # Function to set up environment configuration
-#setup_environment() {
-#    log "Setting up environment configuration"
-#    cp "$MARKETPLACE/.env.example" "$MARKETPLACE/.env"
-#    php "$MARKETPLACE/artisan" key:generate
-#}
+setup_environment() {
+    log "Setting up environment configuration"
+    cp "$MARKETPLACE/.env.example" "$MARKETPLACE/.env"
+    php "$MARKETPLACE/artisan" key:generate
+
+    # Update .env file with database connection details
+    sed -i "s/DB_CONNECTION=.*/DB_CONNECTION=mysql/" "$MARKETPLACE/.env"
+    sed -i "s/DB_HOST=.*/DB_HOST=127.0.0.1/" "$MARKETPLACE/.env"
+    sed -i "s/DB_PORT=.*/DB_PORT=3306/" "$MARKETPLACE/.env"
+    sed -i "s/DB_DATABASE=.*/DB_DATABASE=marketplace/" "$MARKETPLACE/.env"
+    sed -i "s/DB_USERNAME=.*/DB_USERNAME=$DB_USERNAME/" "$MARKETPLACE/.env"
+    sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$DB_PASSWORD/" "$MARKETPLACE/.env"
+
+    # Update cache driver if redis is installed
+    if command -v redis-server &> /dev/null
+    then
+        sed -i "s/CACHE_DRIVER=.*/CACHE_DRIVER=redis/" "$MARKETPLACE/.env"
+    fi
+}
+
+
 
 # Function to migrate the database
-#migrate_database() {
-#    log "Migrating the database"
-#    php "$MARKETPLACE/artisan" migrate
-#}
+migrate_database() {
+    log "Migrating the database"
+    php "$MARKETPLACE/artisan" migrate
+}
+
+# Function to seed the database
+seed_database() {
+    log "Seeding the database"
+    php "$MARKETPLACE/artisan" db:seed
+}
+
+# Function to fresh migrate the database
+migrate_fresh() {
+    log "Running fresh migration"
+    php "$MARKETPLACE/artisan" migrate:fresh
+}
+
+# Function to link storage
+link_storage() {
+    log "Linking storage"
+    php "$MARKETPLACE/artisan" storage:link
+}
+
+
 
 # Main script execution
 main() {
@@ -204,6 +241,12 @@ main() {
     set_permissions
     install_composer_dependencies
     install_node_packages
+    setup_environment
+    migrate_database
+    seed_database
+    # Uncomment the next line if you want to remove dummy data after seeding
+    # migrate_fresh
+    link_storage
     log "Setup completed! Please make sure to update the .env file with correct database connection details and restart your server."
 }
 
