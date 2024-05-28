@@ -63,8 +63,6 @@ install_nginx() {
     mkdir -p "$MARKETPLACE/logs"
     chown -R www-data:www-data "$MARKETPLACE/logs"
 
-    # Create Nginx configuration for the website
-    cat <<END >/etc/nginx/sites-available/default
 }
 
 # Function to install MySQL Server
@@ -105,7 +103,10 @@ install_node() {
     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
     nvm install 18
     nvm use 18
+    sudo apt-get install -y nodejs
+    sudo apt-get install -y npm
 }
+
 
 # Function to set permissions for Marketplace files
 set_permissions() {
@@ -124,8 +125,9 @@ set_permissions() {
     sudo chmod -R ug+rwx $MARKETPLACE/storage/public/products
     
 }
-
+ # Create Nginx configuration for the website
 install_nginx_config(){
+cat <<END >/etc/nginx/sites-available/default
 server {
     listen 80;
     listen [::]:80;
@@ -151,6 +153,12 @@ END
     log "Checking Nginx configuration"
     nginx -t
 
+    log "Starting Nginx"
+    systemctl start nginx
+
+    log "Enabling Nginx"
+    systemctl enable nginx
+ 
     log "Reloading Nginx"
     systemctl reload nginx
 
@@ -198,7 +206,6 @@ setup_environment() {
         sed -i "s/CACHE_DRIVER=.*/CACHE_DRIVER=redis/" "$MARKETPLACE/.env"
     fi
 }
-
 
 
 # Function to migrate the database
